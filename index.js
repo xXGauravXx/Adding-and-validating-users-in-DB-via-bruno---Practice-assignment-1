@@ -1,10 +1,9 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
-const bodyParser = require("body-parser");
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json()); // Using built-in Express JSON parser
 
 // Connect to MongoDB
 mongoose.connect("mongodb://localhost:27017/marketplace", {
@@ -17,7 +16,7 @@ mongoose.connect("mongodb://localhost:27017/marketplace", {
 // Define Mongoose Schema
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true, match: /.+\@.+\..+/ }, // Email validation
   password: { type: String, required: true },
 });
 
@@ -33,6 +32,12 @@ app.post("/register", async (req, res) => {
   }
 
   try {
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already registered" });
+    }
+
     // Hash password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
@@ -44,7 +49,7 @@ app.post("/register", async (req, res) => {
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error: " + error.message });
   }
 });
 
